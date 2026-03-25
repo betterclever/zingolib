@@ -247,29 +247,26 @@ impl LightWallet {
         let Some(spend_horizon) = self.spend_horizon(false) else {
             return Err(WalletError::NoSyncData);
         };
-        if self
-            .shard_trees
-            .orchard
-            .store()
-            .get_checkpoint(&anchor_height)
-            .expect("infallible")
-            .is_none()
-        {
+        // Only check the checkpoint for the pool being queried
+        let has_checkpoint = match N::SHIELDED_PROTOCOL {
+            ShieldedProtocol::Orchard => self
+                .shard_trees
+                .orchard
+                .store()
+                .get_checkpoint(&anchor_height)
+                .expect("infallible")
+                .is_some(),
+            ShieldedProtocol::Sapling => self
+                .shard_trees
+                .sapling
+                .store()
+                .get_checkpoint(&anchor_height)
+                .expect("infallible")
+                .is_some(),
+        };
+        if !has_checkpoint {
             return Err(WalletError::CheckpointNotFound {
-                shielded_protocol: ShieldedProtocol::Orchard,
-                height: anchor_height,
-            });
-        }
-        if self
-            .shard_trees
-            .sapling
-            .store()
-            .get_checkpoint(&anchor_height)
-            .expect("infallible")
-            .is_none()
-        {
-            return Err(WalletError::CheckpointNotFound {
-                shielded_protocol: ShieldedProtocol::Sapling,
+                shielded_protocol: N::SHIELDED_PROTOCOL,
                 height: anchor_height,
             });
         }
